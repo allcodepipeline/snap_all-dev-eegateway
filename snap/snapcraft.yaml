@@ -105,6 +105,7 @@ parts:
       apt-get download \
         python3.12-minimal \
         python3.12 \
+        libpython3.12-minimal \
         libpython3.12-stdlib \
         libpython3.12t64 \
         libexpat1 \
@@ -119,7 +120,11 @@ parts:
         media-types \
         netbase \
         readline-common \
-        libtinfo6
+        libtinfo6 \
+        libcrypt1 \
+        libbz2-1.0 \
+        liblzma5 \
+        libdb5.3t64
       for deb in ./*.deb; do
         dpkg-deb -x "${deb}" "${DEST}"
       done
