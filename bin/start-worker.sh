@@ -7,11 +7,9 @@ set -eu
 . "${SNAP:?}/bin/hooks-lib.sh"
 
 ensure_directories
+export_python_runtime
 
 export EE_DATA_DIR="${DATA_DIR}"
-export PYTHONUNBUFFERED=1
-export PYTHONDONTWRITEBYTECODE=1
-export PYTHONPATH="${SNAP}/local/lib/python3.12/dist-packages:${SNAP}/lib/python3.12/site-packages:${SNAP}/usr/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 
 # Optional env overrides (also written into config.json by the configure hook).
 ee_base_url="$(snapctl get ee-base-url 2>/dev/null || true)"

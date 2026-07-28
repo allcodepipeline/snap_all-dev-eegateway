@@ -62,8 +62,12 @@ apps:
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
-      LD_LIBRARY_PATH: ${SNAP_LIBRARY_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}:$SNAP/usr/lib:$SNAP/usr/lib/x86_64-linux-gnu
+      LD_LIBRARY_PATH: ${SNAP_LIBRARY_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}:$SNAP/usr/lib:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu
       PYTHONPATH: $SNAP/local/lib/python3.12/dist-packages:$SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.12/dist-packages
+      SSL_CERT_FILE: $SNAP/etc/ssl/certs/ca-certificates.crt
+      SSL_CERT_DIR: $SNAP/etc/ssl/certs
+      REQUESTS_CA_BUNDLE: $SNAP/etc/ssl/certs/ca-certificates.crt
+      CURL_CA_BUNDLE: $SNAP/etc/ssl/certs/ca-certificates.crt
       EE_GATEWAY_VERSION: "0.10.6"
 
   ui:
@@ -99,6 +103,7 @@ parts:
       - libsqlite3-0
       - libffi8
       - libssl3t64
+      - openssl
       - ca-certificates
     override-prime: |
       set -eux
@@ -109,7 +114,27 @@ parts:
       fi
       test -x usr/bin/python3.12
       test -e usr/bin/python3
-      usr/bin/python3.12 -c 'import sys; print(sys.version)'
+
+      # HTTPS support must be inside the snap. Without _ssl, urllib raises:
+      #   unknown url type: https
+      SSL_SO="$(find . -name '_ssl*.so' -o -name '_ssl*.so.*' | head -n1 || true)"
+      test -n "${SSL_SO}"
+      echo "found ${SSL_SO}"
+
+      # CA bundle used by SSL_CERT_FILE at runtime.
+      if [ -f etc/ssl/certs/ca-certificates.crt ]; then
+        echo "ca-certificates.crt present"
+      elif [ -f usr/lib/ssl/cert.pem ]; then
+        mkdir -p etc/ssl/certs
+        ln -sfn ../../usr/lib/ssl/cert.pem etc/ssl/certs/ca-certificates.crt
+      else
+        echo "ca-certificates.crt missing from prime" >&2
+        exit 1
+      fi
+
+      export LD_LIBRARY_PATH="${CRAFT_PRIME}/usr/lib/x86_64-linux-gnu:${CRAFT_PRIME}/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
+      export PYTHONHOME="${CRAFT_PRIME}/usr"
+      usr/bin/python3.12 -c 'import ssl, urllib.request; print(ssl.OPENSSL_VERSION)'
 
   gateway-python:
     plugin: nil

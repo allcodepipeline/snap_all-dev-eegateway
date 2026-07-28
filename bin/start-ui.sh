@@ -6,11 +6,9 @@ set -eu
 . "${SNAP:?}/bin/hooks-lib.sh"
 
 ensure_directories
+export_python_runtime
 
 export EE_DATA_DIR="${DATA_DIR}"
-export PYTHONUNBUFFERED=1
-export PYTHONDONTWRITEBYTECODE=1
-export PYTHONPATH="${SNAP}/local/lib/python3.12/dist-packages:${SNAP}/lib/python3.12/site-packages:${SNAP}/usr/lib/python3/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
 
 ui_port="$(snapctl get ui-port 2>/dev/null || true)"
 ui_port="${ui_port:-${DEFAULT_UI_PORT}}"

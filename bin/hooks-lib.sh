@@ -40,6 +40,26 @@ resolve_python() {
   exit 127
 }
 
+# Shared runtime env so urllib can open https:// (needs _ssl + libssl + CA bundle).
+export_python_runtime() {
+  export PYTHONUNBUFFERED=1
+  export PYTHONDONTWRITEBYTECODE=1
+  export PYTHONPATH="${SNAP}/local/lib/python3.12/dist-packages:${SNAP}/lib/python3.12/site-packages:${SNAP}/usr/lib/python3/dist-packages:${SNAP}/usr/lib/python3.12/dist-packages${PYTHONPATH:+:${PYTHONPATH}}"
+  export LD_LIBRARY_PATH="${SNAP}/usr/lib:${SNAP}/usr/lib/x86_64-linux-gnu:${SNAP}/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+  export PATH="${SNAP}/usr/sbin:${SNAP}/usr/bin:${SNAP}/sbin:${SNAP}/bin:${PATH:-/usr/bin:/bin}"
+
+  if [ -f "${SNAP}/etc/ssl/certs/ca-certificates.crt" ]; then
+    export SSL_CERT_FILE="${SNAP}/etc/ssl/certs/ca-certificates.crt"
+    export SSL_CERT_DIR="${SNAP}/etc/ssl/certs"
+    export REQUESTS_CA_BUNDLE="${SSL_CERT_FILE}"
+    export CURL_CA_BUNDLE="${SSL_CERT_FILE}"
+  elif [ -f "${SNAP}/usr/lib/ssl/cert.pem" ]; then
+    export SSL_CERT_FILE="${SNAP}/usr/lib/ssl/cert.pem"
+    export REQUESTS_CA_BUNDLE="${SSL_CERT_FILE}"
+    export CURL_CA_BUNDLE="${SSL_CERT_FILE}"
+  fi
+}
+
 ensure_directories() {
   mkdir -p "${DATA_DIR}" "${LOG_DIR}" "${CADDY_DIR}"
   chmod 700 "${DATA_DIR}"
