@@ -240,11 +240,9 @@ parts:
       - gpsd
       - gpsd-clients
 
-  runtime-certs:
+  jq-tools:
     plugin: nil
     stage-packages:
-      - ca-certificates
-      - openssl
       - jq
       - libjq1
       - libonig5
@@ -252,7 +250,7 @@ parts:
   snap-scripts:
     plugin: nil
     source: .
-    after: [gateway-python, gpsd-support, runtime-certs, python-runtime]
+    after: [gateway-python, gpsd-support, jq-tools, python-runtime]
     override-build: |
       set -eu
       for script in \
