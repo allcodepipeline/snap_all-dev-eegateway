@@ -1,0 +1,198 @@
+name: all-dev-eegateway
+base: core24
+version: '0.10.6.1'
+summary: Bluetooth-LE gateway for open BLE IoT networks.
+description: |
+  ALL Dev EE Gateway turns an Ubuntu Core device into a Bluetooth ground
+  station for open BLE IoT networks (Hubble Network today). It scans with
+  the host Bluetooth radio and forwards packets over HTTPS to
+  encryptedenergy.com.
+
+  Two daemons share persistent state under $SNAP_COMMON on Ubuntu Core with
+  FDE: a worker that scans BLE and ingests packets upstream, and a web
+  dashboard for first-time setup and live status. Configure via the UI or
+  snap set.
+
+icon: snap/gui/icon.svg
+title: EE Gateway
+license: GPL-3.0-only
+contact: support@all.is.one
+source-code: https://github.com/Encrypted-Energy/gateway
+website: https://all.is.one/
+issues: https://github.com/Encrypted-Energy/gateway/issues
+
+grade: stable
+confinement: strict
+compression: lzo
+
+platforms:
+  amd64:
+
+plugs:
+  bluetooth-client:
+    interface: bluez
+  gps-serial:
+    interface: serial-port
+  # Optional HTTPS front-end via all-dev-caddy.
+  #   snap connect all-dev-eegateway:caddy-proxy all-dev-caddy:proxy-config
+  caddy-proxy:
+    interface: content
+    content: caddy-proxy-config
+    target: $SNAP_COMMON/caddy
+
+hooks:
+  configure:
+    plugs:
+      - network
+      - caddy-proxy
+
+apps:
+  worker:
+    command: bin/start-worker.sh
+    daemon: simple
+    daemon-scope: system
+    restart-condition: always
+    restart-delay: 10s
+    plugs:
+      - network
+      - bluetooth-client
+      - gps-serial
+      - hardware-observe
+    environment: &py-env
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
+      LD_LIBRARY_PATH: ${SNAP_LIBRARY_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}:$SNAP/usr/lib:$SNAP/usr/lib/x86_64-linux-gnu
+      PYTHONPATH: $SNAP/local/lib/python3.12/dist-packages:$SNAP/lib/python3.12/site-packages:$SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.12/dist-packages
+      EE_GATEWAY_VERSION: "0.10.6"
+
+  ui:
+    command: bin/start-ui.sh
+    daemon: simple
+    daemon-scope: system
+    restart-condition: always
+    restart-delay: 5s
+    plugs:
+      - network
+      - network-bind
+      - caddy-proxy
+    environment: *py-env
+
+lint:
+  ignore:
+    - library
+
+parts:
+  # Stage CPython explicitly. Relying on the python3 metapackage alone often
+  # leaves $SNAP/usr/bin/python3 missing after base-snap file filtering.
+  python-runtime:
+    plugin: nil
+    stage-packages:
+      - python3.12-minimal
+      - python3.12
+      - libpython3.12-stdlib
+      - libpython3.12t64
+      - libexpat1
+      - zlib1g
+      - libreadline8t64
+      - libncursesw6
+      - libsqlite3-0
+      - libffi8
+      - libssl3t64
+      - ca-certificates
+    override-prime: |
+      set -eux
+      craftctl default
+      # Guarantee a python3 symlink next to the real interpreter.
+      if [ -e usr/bin/python3.12 ] && [ ! -e usr/bin/python3 ]; then
+        ln -sfn python3.12 usr/bin/python3
+      fi
+      test -x usr/bin/python3.12
+      test -e usr/bin/python3
+      usr/bin/python3.12 -c 'import sys; print(sys.version)'
+
+  gateway-python:
+    plugin: nil
+    after: [python-runtime]
+    source: https://github.com/Encrypted-Energy/gateway.git
+    source-type: git
+    source-tag: v0.10.6
+    source-depth: 1
+    build-packages:
+      - gcc
+      - g++
+      - libffi-dev
+      - python3-dev
+      - python3-pip
+      - python3-setuptools
+      - python3-wheel
+      - ca-certificates
+    override-build: |
+      set -eux
+
+      # Upstream package-data lists only static/*.css; include fonts and assets.
+      sed -i 's/"static\/\*\.css"/"static\/*"/' ui/pyproject.toml
+
+      # Allow snap to bind UI to localhost when caddy-proxy is enabled.
+      sed -i \
+        's/create_app().run(host="0.0.0.0", port=port, debug=False)/create_app().run(host=os.environ.get("EE_UI_HOST", "0.0.0.0"), port=port, debug=False)/' \
+        ui/src/ee_gateway_ui/app.py
+
+      # Strip Umbrel-oriented wording from the Flask docstring (cosmetic).
+      sed -i \
+        's/sitting behind Umbrel'\''s app proxy/on the local network/' \
+        ui/src/ee_gateway_ui/app.py || true
+
+      pip install --prefix="${CRAFT_PART_INSTALL}" --ignore-installed ./worker ./ui
+
+      # pip may land under local/.../dist-packages or lib/.../site-packages.
+      WORKER_PKG="$(find "${CRAFT_PART_INSTALL}" -type d -name ee_gateway_worker | head -n1)"
+      UI_PKG="$(find "${CRAFT_PART_INSTALL}" -type d -name ee_gateway_ui | head -n1)"
+      test -n "${WORKER_PKG}"
+      test -n "${UI_PKG}"
+
+  gpsd-support:
+    plugin: nil
+    stage-packages:
+      - gpsd
+      - gpsd-clients
+
+  runtime-certs:
+    plugin: nil
+    stage-packages:
+      - ca-certificates
+      - openssl
+      - jq
+      - libjq1
+      - libonig5
+
+  snap-scripts:
+    plugin: nil
+    source: .
+    after: [gateway-python, gpsd-support, runtime-certs, python-runtime]
+    override-build: |
+      set -eu
+      for script in \
+        "${CRAFT_PROJECT_DIR}/bin/start-worker.sh" \
+        "${CRAFT_PROJECT_DIR}/bin/start-ui.sh" \
+        "${CRAFT_PROJECT_DIR}/bin/hooks-lib.sh" \
+        "${CRAFT_PROJECT_DIR}/snap/hooks/install" \
+        "${CRAFT_PROJECT_DIR}/snap/hooks/configure"
+      do
+        sed -i 's/\r$//' "$script"
+        chmod 755 "$script"
+      done
+      install -D -m 755 "${CRAFT_PROJECT_DIR}/bin/start-worker.sh" \
+        "${CRAFT_PART_INSTALL}/bin/start-worker.sh"
+      install -D -m 755 "${CRAFT_PROJECT_DIR}/bin/start-ui.sh" \
+        "${CRAFT_PART_INSTALL}/bin/start-ui.sh"
+      install -D -m 755 "${CRAFT_PROJECT_DIR}/bin/hooks-lib.sh" \
+        "${CRAFT_PART_INSTALL}/bin/hooks-lib.sh"
+    stage:
+      - bin/start-worker.sh
+      - bin/start-ui.sh
+      - bin/hooks-lib.sh
+    prime:
+      - bin/start-worker.sh
+      - bin/start-ui.sh
+      - bin/hooks-lib.sh

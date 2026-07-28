@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+# shellcheck source=../../bin/hooks-lib.sh
+. "${SNAP:?}/bin/hooks-lib.sh"
+
+validate_all
+ensure_runtime_config
+
+# Do not restart services here. Snapd may already be starting/restarting the
+# daemons when config changes; an extra snapctl restart can fail the hook.

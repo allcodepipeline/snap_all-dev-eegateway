@@ -1,0 +1,14 @@
+parts/
+prime/
+stage/
+*.snap
+dist/
+build/
+build.log
+git_pull.log
+snap/.snapcraft/
+.snapcraft/
+overlay/
+__pycache__/
+*.pyc
+.DS_Store

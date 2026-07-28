@@ -1,0 +1,50 @@
+#!/bin/sh
+set -eu
+
+# Self-contained install hook for Ubuntu Core compatibility.
+# Do not source external files here; snap-exec may run this before the app
+# tree is fully usable on some Core deployments.
+
+COMMON="${SNAP_COMMON}"
+DATA_DIR="${COMMON}/data"
+LOG_DIR="${COMMON}/logs"
+CADDY_DIR="${COMMON}/caddy"
+
+DEFAULT_UI_PORT=8080
+DEFAULT_SCAN_INTERVAL=15
+DEFAULT_SCAN_TIMEOUT=10
+DEFAULT_HEARTBEAT_INTERVAL=60
+DEFAULT_EE_BASE_URL="https://encryptedenergy.com"
+
+mkdir -p "${DATA_DIR}" "${LOG_DIR}" "${CADDY_DIR}"
+chmod 700 "${DATA_DIR}"
+
+ui_port="$(snapctl get ui-port 2>/dev/null || true)"
+if [ -z "$ui_port" ]; then
+  snapctl set ui-port="${DEFAULT_UI_PORT}"
+fi
+
+scan_interval="$(snapctl get scan-interval 2>/dev/null || true)"
+if [ -z "$scan_interval" ]; then
+  snapctl set scan-interval="${DEFAULT_SCAN_INTERVAL}"
+fi
+
+scan_timeout="$(snapctl get scan-timeout 2>/dev/null || true)"
+if [ -z "$scan_timeout" ]; then
+  snapctl set scan-timeout="${DEFAULT_SCAN_TIMEOUT}"
+fi
+
+heartbeat_interval="$(snapctl get heartbeat-interval 2>/dev/null || true)"
+if [ -z "$heartbeat_interval" ]; then
+  snapctl set heartbeat-interval="${DEFAULT_HEARTBEAT_INTERVAL}"
+fi
+
+ee_base_url="$(snapctl get ee-base-url 2>/dev/null || true)"
+if [ -z "$ee_base_url" ]; then
+  snapctl set ee-base-url="${DEFAULT_EE_BASE_URL}"
+fi
+
+proxy_enabled="$(snapctl get proxy-enabled 2>/dev/null || true)"
+if [ -z "$proxy_enabled" ]; then
+  snapctl set proxy-enabled=false
+fi
