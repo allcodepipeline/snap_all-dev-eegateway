@@ -23,7 +23,7 @@ $SNAP_COMMON/
 | Direction | Required? | Notes |
 |-----------|-----------|--------|
 | Outbound to `encryptedenergy.com` | **Yes** | Worker heartbeats and packet ingest. Needs `network` + CA certs (bundled). |
-| Inbound TLS for the local UI | **No** | UI listens plain HTTP (default port 8080). Optional HTTPS via `all-dev-caddy`. |
+| Inbound TLS for the local UI | **No** | UI listens plain HTTP (default port 7880). Optional HTTPS via `all-dev-caddy`. |
 
 ## Build
 
@@ -55,7 +55,7 @@ sudo snap connect all-dev-eegateway:caddy-proxy all-dev-caddy:proxy-config
 
 ### Option A — Web UI
 
-Open `http://<device-ip>:8080`, paste your `ee_live_…` API token from [encryptedenergy.com](https://encryptedenergy.com), set location, and start.
+Open `http://<device-ip>:7880`, paste your `ee_live_…` API token from [encryptedenergy.com](https://encryptedenergy.com), set location, and start.
 
 ### Option B — Headless (`snap set`)
 
@@ -68,7 +68,7 @@ sudo snap set all-dev-eegateway \
   fixed-lon="-122.4194"
 
 # Optional tuning:
-sudo snap set all-dev-eegateway ui-port=8080
+sudo snap set all-dev-eegateway ui-port=7880
 sudo snap set all-dev-eegateway scan-interval=15
 sudo snap set all-dev-eegateway scan-timeout=10
 sudo snap set all-dev-eegateway heartbeat-interval=60
@@ -85,7 +85,7 @@ The **configure** hook validates keys and merges them into `$SNAP_COMMON/data/co
 |-----|---------|-------------|
 | `api-token` | *(empty)* | Required for headless start (`ee_live_…`). Writes `config.json`. |
 | `org-id` | *(empty)* | Optional legacy field; not required by the worker. |
-| `ui-port` | `8080` | Flask dashboard listen port (`EE_UI_PORT`). |
+| `ui-port` | `7880` | Flask dashboard listen port (`EE_UI_PORT`). |
 | `ee-base-url` | `https://encryptedenergy.com` | EE API base URL. |
 | `scan-interval` | `15` | Seconds between BLE scan cycles (0–3600). |
 | `scan-timeout` | `10` | Seconds per `ble.scan()` call (1–300). |

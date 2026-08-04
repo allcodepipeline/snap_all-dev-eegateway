@@ -1,0 +1,53 @@
+{
+  "snaps": [
+    {
+      "name": "bluez",
+      "refresh": true
+    },
+    {
+      "name": "all-dev-eegateway",
+      "refresh": true
+    }
+  ],
+  "snap_config": [
+    {
+      "snap": "all-dev-eegateway",
+      "settings": {
+        "ui-port": 7880,
+        "proxy-enabled": false,
+        "ee-base-url": "https://encryptedenergy.com",
+        "scan-interval": 15,
+        "scan-timeout": 10,
+        "heartbeat-interval": 60
+      }
+    }
+  ],
+  "ignore_failures": false,
+  "pre_service_actions": [],
+  "post_service_actions": [
+    {
+      "names": [
+        "all-dev-eegateway.worker",
+        "all-dev-eegateway.ui"
+      ],
+      "action": "restart"
+    }
+  ],
+  "interface_connections": [
+    {
+      "plug": "all-dev-eegateway:network",
+      "slot": ":network",
+      "action": "connect"
+    },
+    {
+      "plug": "all-dev-eegateway:network-bind",
+      "slot": ":network-bind",
+      "action": "connect"
+    },
+    {
+      "plug": "all-dev-eegateway:bluetooth-client",
+      "slot": "bluez:service",
+      "action": "connect"
+    }
+  ]
+}
