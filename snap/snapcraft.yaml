@@ -1,6 +1,6 @@
 name: all-dev-eegateway
 base: core24
-version: '1.0.1'
+version: '1.0.2'
 summary: Bluetooth-LE gateway for open BLE IoT networks.
 description: |
   ALL Dev EE Gateway turns an Ubuntu Core device into a Bluetooth ground
